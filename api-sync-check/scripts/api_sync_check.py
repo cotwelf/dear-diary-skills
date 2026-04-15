@@ -59,33 +59,39 @@ def extract_frontend_calls(frontend: Path) -> list[dict]:
         base_has_api = bool(re.search(r"API_BASE_URL\s*=\s*['\"][^'\"]*\/api['\"]", text))
         api_prefix = "/api" if base_has_api else ""
 
+        # 提取 Taro.request({ url: `${...}/path`, method: 'GET' }) 块
+        for m in re.finditer(
+            r"Taro\.request\s*\(\s*\{(.*?)\}\s*\)",
+            text, re.DOTALL,
+        ):
+            block = m.group(1)
+            url_m = re.search(r"url:\s*`\$\{[^}]*\}([^`]+)`", block)
+            method_m = re.search(r"method:\s*['\"](\w+)['\"]", block)
+            if url_m:
+                path = url_m.group(1)
+                full_path = (api_prefix + path).rstrip("/") or "/"
+                method = method_m.group(1).upper() if method_m else "GET"
+                # 计算行号
+                line_no = text[:m.start()].count("\n") + 1
+                calls.append({
+                    "method": method,
+                    "path": full_path,
+                    "file": str(f.relative_to(frontend)),
+                    "line": line_no,
+                })
+                continue
+
+        # 补充：匹配 axios 风格 .get(`${BASE}/path`)
         for i, line in enumerate(lines, 1):
-            # 匹配 Taro.request / axios 等: .get(`${BASE}/path`)
             m = re.search(
                 r"\.(get|post|put|delete|patch)\s*\(\s*`?\$\{[^}]*\}([^`'\")\s,]+)",
                 line, re.I,
             )
-            if m:
+            if m and "Taro.request" not in line:
                 path = m.group(2)
                 full_path = (api_prefix + path).rstrip("/") or "/"
                 calls.append({
                     "method": m.group(1).upper(),
-                    "path": full_path,
-                    "file": str(f.relative_to(frontend)),
-                    "line": i,
-                })
-                continue
-            # Taro.request 模式
-            m = re.search(
-                r"url:\s*`?\$\{[^}]*\}([^`'\"]+)`?",
-                line,
-            )
-            if m:
-                path = m.group(1)
-                full_path = (api_prefix + path).rstrip("/") or "/"
-                method_m = re.search(r"method:\s*['\"](\w+)['\"]", text[max(0, text.index(line)-200):text.index(line)+200])
-                calls.append({
-                    "method": method_m.group(1).upper() if method_m else "GET",
                     "path": full_path,
                     "file": str(f.relative_to(frontend)),
                     "line": i,
@@ -169,20 +175,6 @@ def check_routes(backend_routes: list[dict], frontend_calls: list[dict]) -> list
             "location": f"{call['file']}:{call['line']}",
             "msg": f"前端调用了 {method} {path} 但后端未定义",
         })
-
-    # 路径相同但方法不同
-    backend_paths = {normalize_path(r["path"]): r for r in backend_routes}
-    frontend_paths = {normalize_path(c["path"]): c for c in frontend_calls}
-    for path in set(backend_paths) & set(frontend_paths):
-        br = backend_paths[path]
-        fc = frontend_paths[path]
-        if br["method"] != fc["method"]:
-            issues.append({
-                "level": "critical",
-                "type": "method_mismatch",
-                "path": path,
-                "msg": f"{path}: 后端 {br['method']} vs 前端 {fc['method']}",
-            })
 
     return issues
 
