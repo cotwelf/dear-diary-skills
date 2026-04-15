@@ -8,6 +8,8 @@
 dear-diary-skills/
 ├── ai-prompt-lab/     Prompt 版本管理 + A/B 测试 + LLM-as-judge 评分
 ├── ai-eval/           AI 输出质量批量评估（人物提取/关键词/回复）
+├── diary-doctor/      前后端代码健康检查（类型一致性/死代码/内存泄漏）
+├── api-sync-check/    前后端接口一致性校验（路由覆盖/字段匹配）
 └── taro-page/         Taro 页面脚手架一键生成
 ```
 
@@ -47,6 +49,26 @@ ai_eval.py report
 
 输出指标：人物提取 F1、关键词 F1、长度合规率、平均耗时、失败率。
 
+### diary-doctor
+
+扫描前后端代码的健康问题：类型不一致、死代码、空 catch、未清理定时器等。
+
+```bash
+# 同时检查前后端
+diary_doctor.py --frontend ~/dev/dear-diary --backend ~/dev/dear-diary-server
+
+# 单独检查
+diary_doctor.py --project ~/dev/dear-diary-server --type backend
+```
+
+### api-sync-check
+
+对比后端路由定义和前端 service 调用，检测接口不匹配、幽灵调用、字段缺失。
+
+```bash
+api_sync_check.py --frontend ~/dev/dear-diary --backend ~/dev/dear-diary-server
+```
+
 ### taro-page
 
 一键生成 Taro 页面（index.tsx + index.scss + index.config.ts）并自动注册路由。
@@ -59,15 +81,10 @@ gen_page.py --name settings --title 设置 --project ~/dev/dear-diary
 
 - Python 3.10+
 - [Ollama](https://ollama.ai)（ai-prompt-lab 和 ai-eval 需要）
-- `ollama pull llama3.1:8b`
+- `ollama pull deepseek-r1:8b`
 
 ## 安装
 
-将 Skill 目录链接或复制到 Claude Code 的 skills 目录：
-
 ```bash
-# 示例：链接到 ~/.claude/skills/
-ln -s ~/dev/dear-diary-skills/ai-prompt-lab ~/.claude/skills/ai-prompt-lab
-ln -s ~/dev/dear-diary-skills/ai-eval ~/.claude/skills/ai-eval
-ln -s ~/dev/dear-diary-skills/taro-page ~/.claude/skills/taro-page
+./install.sh
 ```

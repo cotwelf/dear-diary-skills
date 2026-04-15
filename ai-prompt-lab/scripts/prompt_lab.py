@@ -12,7 +12,7 @@ from urllib.error import URLError
 
 STORE_DIR = Path.home() / ".dear-diary-skills" / "prompt-lab" / "versions"
 OLLAMA_URL = "http://localhost:11434"
-MODEL = "llama3.1:8b"
+MODEL = "deepseek-r1:8b"
 
 
 def ollama_chat(prompt: str, temperature: float = 0.7) -> str:
